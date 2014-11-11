@@ -25,6 +25,7 @@
 #include <sys/time.h>
 #include <limits.h>
 #include <string.h>
+#include <semaphore.h>
 
 #define false (0)
 #define true (!false)
@@ -56,7 +57,7 @@ typedef struct DelayInterval
 {
 //	void (*init)(long seconds, long useconds);
 	struct timeval fTv;
-	int tokenCounter;//¿?¿?¿?¿?¿?¿?counter¿?¿?.
+	int tokenCounter;
 }DelayInterval;
 
 
@@ -67,7 +68,7 @@ typedef struct EventTime
 	struct timeval fTv;
 }EventTime;
 
-typedef struct DelayQueueEntry/*¿?¿?¿?¿?¿?¿?*/
+typedef struct DelayQueueEntry
 {
 	struct DelayQueueEntry* fNext;
 	struct DelayQueueEntry* fPrev;
@@ -78,7 +79,7 @@ typedef struct DelayQueueEntry/*¿?¿?¿?¿?¿?¿?*/
 typedef struct DelayQueue
 {
 	DelayQueueEntry fDelayQueueEntry;
-	EventTime fLastSyncTime;//¿?¿?¿?¿?¿?¿?¿?¿?¿?¿?¿? ¿?¿?¿?¿?¿?¿?¿?¿?¿?¿?¿?.
+	EventTime fLastSyncTime;
 	void (*init)(struct DelayQueue *fDelayQueue);
 	void (*handleAlarm)(struct DelayQueue *fDelayQueue);
 	void (*addEntry)(struct DelayQueue* fDelayQueue, DelayQueueEntry* newEntry); // returns a token for the entry
@@ -86,7 +87,7 @@ typedef struct DelayQueue
 	void (*removeEntry)(DelayQueueEntry* entry); // but doesn't delete it
 
 	DelayQueueEntry*(* head)(struct DelayQueue* fDelayQueue);
-	void (*synchronize)(struct DelayQueue* fDelayQueue);//¿?¿?¿?¿?¿?¿?¿?¿?¿?¿?¿?¿?. 5 3 2 1 ¿?¿?¿?¿?9 ¿?¿?¿?¿?0 0 1 1
+	void (*synchronize)(struct DelayQueue* fDelayQueue);
 }DelayQueue;
 
 typedef struct AlarmHandler

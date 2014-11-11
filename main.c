@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <semaphore.h>
 
 void task_test(void *clientData)
 {
@@ -36,12 +37,16 @@ int main(void) {
 	pthread_t delay_task_id;
     pthread_attr_t attr;
 
+    if(0 != sem_init(&DelayedTask_sem, 0, 0))
+    {
+        perror("Semaphore init failed\n");
+    }
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
-	pthread_create(&delay_task_id, &attr, delay_task_func, NULL);
-	sleep(1);
-
+    pthread_create(&delay_task_id, &attr, delay_task_func, NULL);
+    sem_wait(&DelayedTask_sem);
+//eg:
 	scheduleDelayedTask(1000000, task_test, str);
 	scheduleDelayedTask(2000000, task_test, str);
 	scheduleDelayedTask(2000000, task_test, str);

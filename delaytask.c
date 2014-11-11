@@ -24,6 +24,7 @@ static struct Timeval timeVal;
 DelayQueue fDelayQueue;
 char watchVariable_flag=0;
 static const int MILLION = 1000000;
+sem_t DelayedTask_sem;
 
 static void handleTimeout(struct AlarmHandler* fAlarmHandler)
 {
@@ -52,8 +53,8 @@ static void EventTime_init(struct EventTime* fEventTime)
 static bool timeGe(struct timeval *timeArg1, struct timeval *timeArg2)//arg1>=arg2
 {
 	return (((long) timeArg1->tv_sec > (long) (timeArg2->tv_sec))
-			|| ((long) timeArg1->tv_sec == (long) timeArg2->tv_sec)
-			&& ((long) timeArg1->tv_usec == (long) timeArg2->tv_usec));
+			|| (((long) timeArg1->tv_sec == (long) timeArg2->tv_sec)
+			&& ((long) timeArg1->tv_usec >= (long) timeArg2->tv_usec)));
 }
 
 static bool timeLe(struct timeval *timeArg1, struct timeval *timeArg2)//arg1 <= arg2
@@ -77,15 +78,13 @@ static void timeSub(struct timeval *timeArg1, struct timeval *timeArg2)//arg1 = 
 {
 	timeArg1->tv_sec -= timeArg2->tv_sec;
 	timeArg1->tv_usec -= timeArg2->tv_usec;
-	//溢出为负数需要处理
-}
+	//溢出为负数需要处�?}
 
 static void timeAdd(struct timeval *timeArg1, struct timeval *timeArg2)//arg1 = arg1 + arg2
 {
 	timeArg1->tv_sec += timeArg2->tv_sec;
 	timeArg1->tv_usec += timeArg2->tv_usec;
-	//溢出为负数需要处理
-}
+	//溢出为负数需要处�?}
 static void Timeval_init(Timeval *ftimeval)
 {
     ftimeval->ge = timeGe;
@@ -119,8 +118,7 @@ static void addEntry(struct DelayQueue* fDelayQueue, DelayQueueEntry* newEntry)
 
 static void removeEntry(DelayQueueEntry* entry)
 {
-	if (entry == NULL || entry->fNext == NULL) return;//末节点
-
+	if (entry == NULL || entry->fNext == NULL) return;//末节�?
 	//entry->fNext->fDeltaTimeRemaining.fTv += entry->fDeltaTimeRemaining.fTv;
 	timeVal.add(&entry->fNext->fDeltaTimeRemaining.fTv, &entry->fDeltaTimeRemaining.fTv);
 	entry->fPrev->fNext = entry->fNext;
@@ -140,7 +138,7 @@ static void synchronize(struct DelayQueue* fDelayQueue)
 	EventTime_init(&timeNow);
 	timeNow.init(&timeNow, tvNow.tv_sec, tvNow.tv_usec);
 
-	//当前时间比上次更新的时间早:这是不正常的应该恢复(由于外界更改时间会导致此发生)
+	//当前时间比上次更新的时间�?这是不正常的应该恢复(由于外界更改时间会导致此发生)
 	if (timeVal.lt(&timeNow.fTv, &fDelayQueue->fLastSyncTime.fTv))
 	{
 		fDelayQueue->fLastSyncTime.fTv = timeNow.fTv;
@@ -157,7 +155,7 @@ static void synchronize(struct DelayQueue* fDelayQueue)
 
 	fDelayQueue->fLastSyncTime.fTv = timeNow.fTv;//同步时间
 
-	//调整延时队列 根据时间差确定哪些事件应该被置0;或者减少 准备进行调度
+	//调整延时队列 根据时间差确定哪些事件应该被�?;或者减�?准备进行调度
 	DelayQueueEntry* curEntry = fDelayQueue->head(fDelayQueue);
 	while (timeVal.ge(&timeSinceLastSync.fTv, &curEntry->fDeltaTimeRemaining.fTv))
 	{
@@ -187,7 +185,7 @@ static void handleAlarm(DelayQueue *fDelayQueue) {
 #endif
 
     fDelayQueue->removeEntry(toRemove); // do this first, in case handler accesses queue
-    //获取派生类的alarm_handler 的指针.stu.name, struct student, name
+    //获取派生类的alarm_handler 的指�?stu.name, struct student, name
     AlarmHandler *tmp = container_of(toRemove, struct AlarmHandler, fDelayQueueEntry);//)
     tmp->handleTimeout(tmp);
 //    toRemove->handleTimeout(); //delete itself
@@ -266,6 +264,7 @@ void *delay_task_func(void *data)
     Timeval_init(&timeVal);
 	DelayQueue_init(&fDelayQueue);
     fDelayQueue.init(&fDelayQueue);
+    sem_post(&DelayedTask_sem);
 //	scheduleDelayedTask(1000000, task_test, str);
 	doEventLoop(&watchVariable_flag);
 	return NULL;
