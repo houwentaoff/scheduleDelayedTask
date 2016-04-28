@@ -23,20 +23,40 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <stdlib.h>
+#include <sys/resource.h>
+
+#define  EnableCoreDumps()\
+{\
+        struct rlimit   limit;\
+        limit.rlim_cur = RLIM_INFINITY;\
+        limit.rlim_max = RLIM_INFINITY;\
+        setrlimit(RLIMIT_CORE, &limit);\
+}
+
+extern sem_t DelayedTask_sem;
 
 void task_test(void *clientData)
 {
-	char *p=clientData;
-	printf("[clientData]%s\n", p);
+//	char *p=clientData;
+//	printf("[clientData]%s\n", p);
+    int *tmp = clientData;
+    printf("tmp[%d]\n", (int)tmp);
 	return;
 }
 
 char str[]="hello ,this is a delay task\n";
+char char_table[]="abcdefghigklmn\n";
 
 int main(void) {
 	pthread_t delay_task_id;
     pthread_attr_t attr;
-
+    int i =0;
+    
+    EnableCoreDumps();
+    mkdir("./cores",0775);//mkdir -p ../cores
+    system("sysctl -w kernel.core_pattern=./cores/core.%e-%p-%t");//在../cores目录中生成 core.test....
+    
     if(0 != sem_init(&DelayedTask_sem, 0, 0))
     {
         perror("Semaphore init failed\n");
@@ -47,9 +67,12 @@ int main(void) {
     pthread_create(&delay_task_id, &attr, delay_task_func, NULL);
     sem_wait(&DelayedTask_sem);
 //eg:
-	scheduleDelayedTask(1000000, task_test, str);
-	scheduleDelayedTask(2000000, task_test, str);
-	scheduleDelayedTask(2000000, task_test, str);
+    for (i=0; i<100 ;i++)
+    {
+	    scheduleDelayedTask(0, task_test, (void *)i);
+    }
+//	scheduleDelayedTask(2000000, task_test, str);
+//	scheduleDelayedTask(2000000, task_test, str);
     while (1)
     {
         sleep(1);
