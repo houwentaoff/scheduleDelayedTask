@@ -17,7 +17,90 @@
  * =====================================================================================
  */
 
+#include <unistd.h>
 #include "delaytask.h"
+
+#define false (0)
+#define true (!false)
+
+#define DELAY_ZERO  0
+
+#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
+
+/**
+ * container_of - cast a member of a structure out to the containing structure
+ *
+ * @ptr:	the pointer to the member.
+ * @type:       the type of the container struct this is embedded in.
+ * @member:     the name of the member within the struct.
+ *
+ */
+#define container_of(ptr, type, member) ({		      \
+	const typeof(((type *)0)->member)*__mptr = (ptr);    \
+	(type *)((char *)__mptr - offsetof(type, member)); })
+
+typedef int bool;
+typedef TaskFun TaskFunc;
+typedef struct DelayInterval
+{
+//	void (*init)(long seconds, long useconds);
+	struct timeval fTv;
+	int tokenCounter;
+}DelayInterval;
+
+
+typedef struct EventTime
+{
+	void (*init)(struct EventTime* fEventTime, unsigned secondsSinceEpoch,
+		    unsigned usecondsSinceEpoch);
+	struct timeval fTv;
+}EventTime;
+
+typedef struct DelayQueueEntry
+{
+	struct DelayQueueEntry* fNext;
+	struct DelayQueueEntry* fPrev;
+	DelayInterval fDeltaTimeRemaining;
+
+}DelayQueueEntry;
+
+typedef struct DelayQueue
+{
+	DelayQueueEntry fDelayQueueEntry;
+	EventTime fLastSyncTime;
+	void (*init)(struct DelayQueue *fDelayQueue);
+	void (*handleAlarm)(struct DelayQueue *fDelayQueue);
+	void (*addEntry)(struct DelayQueue* fDelayQueue, DelayQueueEntry* newEntry); // returns a token for the entry
+	void (*updateEntry)(DelayQueueEntry* entry, DelayInterval newDelay);
+	void (*removeEntry)(DelayQueueEntry* entry); // but doesn't delete it
+
+	DelayQueueEntry*(* head)(struct DelayQueue* fDelayQueue);
+	void (*synchronize)(struct DelayQueue* fDelayQueue);
+}DelayQueue;
+
+typedef struct AlarmHandler
+{
+	DelayQueueEntry fDelayQueueEntry;
+	TaskFunc* fProc;
+	void * fClientData;
+	void (*init)(struct AlarmHandler* fAlarmHandler, TaskFunc* fProc, void * fClientData, DelayInterval *fDelayInterval);
+	void (*handleTimeout)(struct AlarmHandler* fAlarmHandler);
+	int fToken;
+}AlarmHandler;
+
+typedef struct Timeval
+{
+	//>= += -= - ,> (!<) <(! >=) ==(arg1 >= arg2&& arg1 >= arg2) !=
+    bool (*ge)(struct timeval* arg1, struct timeval* arg2);//>=
+    void (*add)(struct timeval* arg1, struct timeval* arg2);//+=
+    void (*sub)(struct timeval* arg1, struct timeval* arg2);//-=
+    bool (*eq)(struct timeval* arg1, struct timeval* arg2);
+    bool (*ne)(struct timeval* arg1, struct timeval* arg2);
+    bool (*le)(struct timeval* arg1, struct timeval* arg2);//<=
+    bool (*lt)(struct timeval* arg1, struct timeval* arg2);//<
+
+	struct timeval fTv;
+}Timeval;
 
 static struct Timeval timeVal;
 
@@ -115,7 +198,7 @@ static void addEntry(struct DelayQueue* fDelayQueue, DelayQueueEntry* newEntry)
     fDelayQueue->synchronize(fDelayQueue);
 
     DelayQueueEntry* cur = fDelayQueue->head(fDelayQueue);
-    if (cur->fPrev == 0x31)
+    if ((int)cur->fPrev == 0x31)
     {
         printf("2222\n");
         exit(1);
@@ -123,7 +206,7 @@ static void addEntry(struct DelayQueue* fDelayQueue, DelayQueueEntry* newEntry)
     
     while ((timeVal.ge)(&newEntry->fDeltaTimeRemaining.fTv, &cur->fDeltaTimeRemaining.fTv))
     {
-        if (cur->fNext->fPrev == 0x31)
+        if ((int)cur->fNext->fPrev == 0x31)
         {
             printf("1111\n");
         }
@@ -133,7 +216,7 @@ static void addEntry(struct DelayQueue* fDelayQueue, DelayQueueEntry* newEntry)
         cur = cur->fNext;
         
     }
-    if (cur->fPrev == 0x31)
+    if ((int)cur->fPrev == 0x31)
     {
         printf("4444\n");
         exit(1);
@@ -141,7 +224,7 @@ static void addEntry(struct DelayQueue* fDelayQueue, DelayQueueEntry* newEntry)
 
     //cur->fDeltaTimeRemaining.fTv -= newEntry->fDeltaTimeRemaining.fTv;
     timeVal.sub(&cur->fDeltaTimeRemaining.fTv, &newEntry->fDeltaTimeRemaining.fTv);
-    if (cur->fPrev == 0x31)
+    if ((int)cur->fPrev == 0x31)
     {
         printf("3333\n");
         exit(1);
@@ -257,6 +340,7 @@ void doEventLoop(char* watchVariable) {
   // Repeatedly loop, handling readble sockets and timed events:
   while (1) {
     if (watchVariable != NULL && *watchVariable != 0) break;
+    /* may be you should changed by yourself eg: add usleep(0);*/
     SingleStep(0);
   }
 }
@@ -305,6 +389,11 @@ void *delay_task_func(void *data)
 //    scheduleDelayedTask(1000000, task_test, str);
     doEventLoop(&watchVariable_flag);
     return NULL;
+}
+
+int schedule_task_is_empty()
+{
+    return ((NULL == fDelayQueue.head(&fDelayQueue)) ? 1 : 0); 
 }
 
 
