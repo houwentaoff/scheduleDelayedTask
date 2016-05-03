@@ -342,6 +342,7 @@ void doEventLoop(char* watchVariable) {
     if (watchVariable != NULL && *watchVariable != 0) break;
     /* may be you should changed by yourself eg: add usleep(0);*/
     SingleStep(0);
+    usleep(30*1000);//may be changed
   }
 }
 
@@ -393,7 +394,7 @@ void *delay_task_func(void *data)
 
 int schedule_task_is_empty()
 {
-    return ((NULL == fDelayQueue.head(&fDelayQueue)) ? 1 : 0); 
+    return ((fDelayQueue.head(&fDelayQueue) == (fDelayQueue.head(&fDelayQueue))->fPrev) ? 1 : 0); 
 }
 
 
