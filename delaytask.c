@@ -121,7 +121,7 @@ static void DelayInterval_init(DelayInterval * fDelayInterval, long seconds, lon
     fDelayInterval->fTv.tv_usec = useconds;
 }
 
-static void EventTime__init__(struct EventTime* fEventTime, unsigned secondsSinceEpoch ,
+static void do_EventTime_init(struct EventTime* fEventTime, unsigned secondsSinceEpoch ,
         unsigned usecondsSinceEpoch )
 {
     fEventTime->fTv.tv_sec = secondsSinceEpoch;
@@ -129,7 +129,7 @@ static void EventTime__init__(struct EventTime* fEventTime, unsigned secondsSinc
 }
 static void EventTime_init(struct EventTime* fEventTime)
 {
-    fEventTime->init = EventTime__init__;
+    fEventTime->init = do_EventTime_init;
 }
 
 
@@ -311,7 +311,7 @@ static void handleAlarm(DelayQueue *fDelayQueue) {
   }
 }
 
-void DelayQueue__init__(DelayQueue *fDelayQueue)
+void do_DelayQueue_init(DelayQueue *fDelayQueue)
 {
     //永远到不了的时间
     fDelayQueue->fDelayQueueEntry.fDeltaTimeRemaining.fTv.tv_sec = INT_MAX; 
@@ -325,7 +325,7 @@ void DelayQueue_init(DelayQueue *fDelayQueue)
     fDelayQueue->synchronize = synchronize;
     fDelayQueue->removeEntry = removeEntry;
     fDelayQueue->addEntry = addEntry;
-    fDelayQueue->init = DelayQueue__init__;
+    fDelayQueue->init = do_DelayQueue_init;
 }
 
 void SingleStep(unsigned maxDelayTime)
@@ -347,7 +347,7 @@ void doEventLoop(char* watchVariable) {
 }
 
 
-void AlarmHandler__init__(AlarmHandler* fAlarmHandler, TaskFunc* fProc, void * fClientData, DelayInterval *timeToDelay)
+void do_AlarmHandler_init(AlarmHandler* fAlarmHandler, TaskFunc* fProc, void * fClientData, DelayInterval *timeToDelay)
 {
     fAlarmHandler->fProc = fProc;
     fAlarmHandler->fClientData = fClientData;
@@ -357,7 +357,7 @@ void AlarmHandler__init__(AlarmHandler* fAlarmHandler, TaskFunc* fProc, void * f
 }
 void AlarmHandler_init(AlarmHandler *fAlarmHandler)
 {
-    fAlarmHandler->init = AlarmHandler__init__;
+    fAlarmHandler->init = do_AlarmHandler_init;
     fAlarmHandler->handleTimeout  = handleTimeout;
 }
 
