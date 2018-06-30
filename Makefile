@@ -3,10 +3,10 @@ default:all
 all:main
 
 main:main.o delaytask.o
-	gcc  $^ -o $@ -lpthread
+	g++  $^ -o $@ -std=c++11 -lpthread
 
-%.o:%.c
-	gcc -c $^ -o $@ -g
+%.o:%.cpp
+	g++ -c $^ -o $@ -g -std=c++11
 
 .PHONY:
 clean:

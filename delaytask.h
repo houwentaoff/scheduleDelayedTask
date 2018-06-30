@@ -21,15 +21,21 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#ifdef Win32
+#else
 #include <pthread.h>
 #include <sys/time.h>
+#include <semaphore.h>
+#endif
 #include <limits.h>
 #include <string.h>
-#include <semaphore.h>
 
 typedef void* TaskToken;
 typedef void TaskFun(void* clientData);
+#ifdef Win32
+#else
 typedef long long __int64;
+#endif
 
 void *delay_task_func(void *data);
 TaskToken scheduleDelayedTask(__int64 microseconds,
