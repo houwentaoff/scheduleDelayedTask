@@ -198,37 +198,18 @@ static void addEntry(struct DelayQueue* fDelayQueue, DelayQueueEntry* newEntry)
     fDelayQueue->synchronize(fDelayQueue);
 
     DelayQueueEntry* cur = fDelayQueue->head(fDelayQueue);
-    if ((int)cur->fPrev == 0x31)
-    {
-        printf("2222\n");
-        exit(1);
-    }
     
     while ((timeVal.ge)(&newEntry->fDeltaTimeRemaining.fTv, &cur->fDeltaTimeRemaining.fTv))
     {
-        if ((int)cur->fNext->fPrev == 0x31)
-        {
-            printf("1111\n");
-        }
         
         //newEntry->fDeltaTimeRemaining.fTv -= cur->fDeltaTimeRemaining.fTv;
         timeVal.sub(&newEntry->fDeltaTimeRemaining.fTv, &cur->fDeltaTimeRemaining.fTv);
         cur = cur->fNext;
         
     }
-    if ((int)cur->fPrev == 0x31)
-    {
-        printf("4444\n");
-        exit(1);
-    }
 
     //cur->fDeltaTimeRemaining.fTv -= newEntry->fDeltaTimeRemaining.fTv;
     timeVal.sub(&cur->fDeltaTimeRemaining.fTv, &newEntry->fDeltaTimeRemaining.fTv);
-    if ((int)cur->fPrev == 0x31)
-    {
-        printf("3333\n");
-        exit(1);
-    }
     //add it to queue Entry
     newEntry->fNext = cur;
     newEntry->fPrev = cur->fPrev;
@@ -293,8 +274,8 @@ static void handleAlarm(DelayQueue *fDelayQueue) {
 #endif
   memset(&fTv, DELAY_ZERO, sizeof(struct timeval));
   if (timeVal.ne(&fDelayQueue->head(fDelayQueue)->fDeltaTimeRemaining.fTv , &fTv)) fDelayQueue->synchronize(fDelayQueue);
-
-  if (timeVal.eq(&fDelayQueue->head(fDelayQueue)->fDeltaTimeRemaining.fTv, &fTv))
+  /* bug:fix only one/per */
+  while (timeVal.eq(&fDelayQueue->head(fDelayQueue)->fDeltaTimeRemaining.fTv, &fTv))
   {
     // This event is due to be handled:
 
