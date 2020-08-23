@@ -51,7 +51,7 @@ typedef TaskFun TaskFunc;
 typedef struct DelayInterval
 {
 //	void (*init)(long seconds, long useconds);
-	struct timeval fTv;
+	struct timeval tv;
 	int tokenCounter;
 }DelayInterval;
 
@@ -59,7 +59,7 @@ typedef struct EventTime
 {
 	void (*init)(struct EventTime* fEventTime, unsigned secondsSinceEpoch,
 		    unsigned usecondsSinceEpoch);
-	struct timeval fTv;
+	struct timeval tv;
 }EventTime;
 
 typedef struct DelayQueueEntry
@@ -90,9 +90,9 @@ typedef struct AlarmHandler
 	TaskFunc* fProc;
 	void * fClientData;
 	void (*init)(struct AlarmHandler* fAlarmHandler, TaskFunc* fProc, void * fClientData, DelayInterval *fDelayInterval);
-	void (*handleTimeout)(struct AlarmHandler* fAlarmHandler);
+	void (*handle_timeout)(struct AlarmHandler* fAlarmHandler);
 	int fToken;
-}AlarmHandler;
+}AlarmHandler_t;
 
 typedef struct Timeval
 {
@@ -105,7 +105,7 @@ typedef struct Timeval
     bool (*le)(struct timeval* arg1, struct timeval* arg2);//<=
     bool (*lt)(struct timeval* arg1, struct timeval* arg2);//<
 
-	struct timeval fTv;
+	struct timeval tv;
 }Timeval;
 
 static struct Timeval timeVal;
@@ -117,52 +117,52 @@ sem_t DelayedTask_sem;
 static timer_t timer;
 static struct itimerspec ts;
 
-static void handleTimeout(struct AlarmHandler* fAlarmHandler)
+static void handle_timeout(struct AlarmHandler* fAlarmHandler)
 {
     delaytask_msg("==>%s\n", __func__);
     (*fAlarmHandler->fProc)(fAlarmHandler->fClientData);
     free(fAlarmHandler);
-    //fAlarmHandler->fDelayQueueEntry.handleTimeout();
+    //fAlarmHandler->fDelayQueueEntry.handle_timeout();
     delaytask_msg("<==%s\n", __func__);
 }
 static void DelayInterval_init(DelayInterval * fDelayInterval, long seconds, long useconds)
 {
-    fDelayInterval->fTv.tv_sec = seconds;
-    fDelayInterval->fTv.tv_usec = useconds;
+    fDelayInterval->tv.tv_sec = seconds;
+    fDelayInterval->tv.tv_usec = useconds;
 }
 static void do_EventTime_init(struct EventTime* fEventTime, unsigned secondsSinceEpoch ,
         unsigned usecondsSinceEpoch )
 {
-    fEventTime->fTv.tv_sec = secondsSinceEpoch;
-    fEventTime->fTv.tv_usec = usecondsSinceEpoch;
+    fEventTime->tv.tv_sec = secondsSinceEpoch;
+    fEventTime->tv.tv_usec = usecondsSinceEpoch;
 }
 static void EventTime_init(struct EventTime* fEventTime)
 {
     fEventTime->init = do_EventTime_init;
 }
-static bool timeGe(struct timeval *timeArg1, struct timeval *timeArg2)//arg1>=arg2
+static bool time_ge(struct timeval *timeArg1, struct timeval *timeArg2)//arg1>=arg2
 {
     return (((long) timeArg1->tv_sec > (long) (timeArg2->tv_sec))
             || (((long) timeArg1->tv_sec == (long) timeArg2->tv_sec)
             && ((long) timeArg1->tv_usec >= (long) timeArg2->tv_usec)));
 }
-static bool timeLe(struct timeval *timeArg1, struct timeval *timeArg2)//arg1 <= arg2
+static bool time_le(struct timeval *timeArg1, struct timeval *timeArg2)//arg1 <= arg2
 {
-    return timeGe(timeArg2, timeArg1);
+    return time_ge(timeArg2, timeArg1);
 }
-static bool timeLt(struct timeval *timeArg1, struct timeval *timeArg2)//arg1 <  arg2
+static bool time_lt(struct timeval *timeArg1, struct timeval *timeArg2)//arg1 <  arg2
 {
-    return (!timeGe(timeArg1, timeArg2));
+    return (!time_ge(timeArg1, timeArg2));
 }
-static bool timeEq(struct timeval *timeArg1, struct timeval *timeArg2)//arg1 == arg2
+static bool time_eq(struct timeval *timeArg1, struct timeval *timeArg2)//arg1 == arg2
 {
-    return (timeGe(timeArg1, timeArg2) && timeGe(timeArg2, timeArg1));
+    return (time_ge(timeArg1, timeArg2) && time_ge(timeArg2, timeArg1));
 }
-static bool timeNe(struct timeval *timeArg1, struct timeval *timeArg2)//arg1 != arg2
+static bool time_ne(struct timeval *timeArg1, struct timeval *timeArg2)//arg1 != arg2
 {
-    return (!timeEq(timeArg1, timeArg2));
+    return (!time_eq(timeArg1, timeArg2));
 }
-static void timeSub(struct timeval *timeArg1, struct timeval *timeArg2)//arg1 = arg1 - arg2
+static void time_sub(struct timeval *timeArg1, struct timeval *timeArg2)//arg1 = arg1 - arg2
 {
     timeArg1->tv_sec -= timeArg2->tv_sec;
     timeArg1->tv_usec -= timeArg2->tv_usec;
@@ -175,7 +175,7 @@ static void timeSub(struct timeval *timeArg1, struct timeval *timeArg2)//arg1 = 
         timeArg1->tv_sec = timeArg1->tv_usec = 0;
     
 }
-static void timeAdd(struct timeval *timeArg1, struct timeval *timeArg2)//arg1 = arg1 + arg2
+static void time_add(struct timeval *timeArg1, struct timeval *timeArg2)//arg1 = arg1 + arg2
 {
     timeArg1->tv_sec += timeArg2->tv_sec;
     timeArg1->tv_usec += timeArg2->tv_usec;
@@ -188,13 +188,13 @@ static void timeAdd(struct timeval *timeArg1, struct timeval *timeArg2)//arg1 = 
 }
 static void Timeval_init(Timeval *ftimeval)
 {
-    ftimeval->ge = timeGe;
-    ftimeval->add = timeAdd;
-    ftimeval->sub = timeSub;
-    ftimeval->eq = timeEq;
-    ftimeval->ne = timeNe;
-    ftimeval->le = timeLe;
-    ftimeval->lt = timeLt;
+    ftimeval->ge = time_ge;
+    ftimeval->add = time_add;
+    ftimeval->sub = time_sub;
+    ftimeval->eq = time_eq;
+    ftimeval->ne = time_ne;
+    ftimeval->le = time_le;
+    ftimeval->lt = time_lt;
 }
 
 static void addEntry(struct DelayQueue* fDelayQueue, DelayQueueEntry* newEntry)
@@ -203,17 +203,17 @@ static void addEntry(struct DelayQueue* fDelayQueue, DelayQueueEntry* newEntry)
 
     DelayQueueEntry* cur = fDelayQueue->head(fDelayQueue);
     
-    while ((timeVal.ge)(&newEntry->fDeltaTimeRemaining.fTv, &cur->fDeltaTimeRemaining.fTv))
+    while ((timeVal.ge)(&newEntry->fDeltaTimeRemaining.tv, &cur->fDeltaTimeRemaining.tv))
     {
         
-        //newEntry->fDeltaTimeRemaining.fTv -= cur->fDeltaTimeRemaining.fTv;
-        timeVal.sub(&newEntry->fDeltaTimeRemaining.fTv, &cur->fDeltaTimeRemaining.fTv);
+        //newEntry->fDeltaTimeRemaining.tv -= cur->fDeltaTimeRemaining.tv;
+        timeVal.sub(&newEntry->fDeltaTimeRemaining.tv, &cur->fDeltaTimeRemaining.tv);
         cur = cur->fNext;
         
     }
 
-    //cur->fDeltaTimeRemaining.fTv -= newEntry->fDeltaTimeRemaining.fTv;
-    timeVal.sub(&cur->fDeltaTimeRemaining.fTv, &newEntry->fDeltaTimeRemaining.fTv);
+    //cur->fDeltaTimeRemaining.tv -= newEntry->fDeltaTimeRemaining.tv;
+    timeVal.sub(&cur->fDeltaTimeRemaining.tv, &newEntry->fDeltaTimeRemaining.tv);
     //add it to queue Entry
     newEntry->fNext = cur;
     newEntry->fPrev = cur->fPrev;
@@ -223,8 +223,8 @@ static void addEntry(struct DelayQueue* fDelayQueue, DelayQueueEntry* newEntry)
 static void removeEntry(DelayQueueEntry* entry)
 {
     if (entry == NULL || entry->fNext == NULL) return;//末节???
-    //entry->fNext->fDeltaTimeRemaining.fTv += entry->fDeltaTimeRemaining.fTv;
-    timeVal.add(&entry->fNext->fDeltaTimeRemaining.fTv, &entry->fDeltaTimeRemaining.fTv);
+    //entry->fNext->fDeltaTimeRemaining.tv += entry->fDeltaTimeRemaining.tv;
+    timeVal.add(&entry->fNext->fDeltaTimeRemaining.tv, &entry->fDeltaTimeRemaining.tv);
     entry->fPrev->fNext = entry->fNext;
     entry->fNext->fPrev = entry->fPrev;
     entry->fNext = entry->fPrev = NULL;
@@ -243,41 +243,41 @@ static void synchronize(struct DelayQueue* fDelayQueue)
     timeNow.init(&timeNow, tvNow.tv_sec, tvNow.tv_usec);
 
     //当前时间比上次更新的时间早:这是不正常的应该恢复(由于外界更改时间会导致此发生)
-    if (timeVal.lt(&timeNow.fTv, &fDelayQueue->fLastSyncTime.fTv))
+    if (timeVal.lt(&timeNow.tv, &fDelayQueue->fLastSyncTime.tv))
     {
-        fDelayQueue->fLastSyncTime.fTv = timeNow.fTv;
+        fDelayQueue->fLastSyncTime.tv = timeNow.tv;
         return;
     }
 
     DelayInterval timeSinceLastSync;
-    //timeSinceLastSync.fTv = timeNow.fTv - fDelayQueue->fLastSyncTime.fTv;
+    //timeSinceLastSync.tv = timeNow.tv - fDelayQueue->fLastSyncTime.tv;
 
-    timeSinceLastSync.fTv = timeNow.fTv;
-    timeVal.sub(&timeSinceLastSync.fTv, &fDelayQueue->fLastSyncTime.fTv);
-    //        timeSinceLastSync -= fDelayQueue->fLastSyncTime.fTv;
+    timeSinceLastSync.tv = timeNow.tv;
+    timeVal.sub(&timeSinceLastSync.tv, &fDelayQueue->fLastSyncTime.tv);
+    //        timeSinceLastSync -= fDelayQueue->fLastSyncTime.tv;
 
 
-    fDelayQueue->fLastSyncTime.fTv = timeNow.fTv;//同步时间
+    fDelayQueue->fLastSyncTime.tv = timeNow.tv;//同步时间
 
     //调整延时队列 根据时间差确定哪些事件应该被???;或者减???准备进行调度
     DelayQueueEntry* curEntry = fDelayQueue->head(fDelayQueue);
-    while (timeVal.ge(&timeSinceLastSync.fTv, &curEntry->fDeltaTimeRemaining.fTv))
+    while (timeVal.ge(&timeSinceLastSync.tv, &curEntry->fDeltaTimeRemaining.tv))
     {
-        timeVal.sub (&timeSinceLastSync.fTv, &curEntry->fDeltaTimeRemaining.fTv);
-        memset(&curEntry->fDeltaTimeRemaining.fTv, DELAY_ZERO, sizeof(struct timeval));// = (long)DELAY_ZERO;
+        timeVal.sub (&timeSinceLastSync.tv, &curEntry->fDeltaTimeRemaining.tv);
+        memset(&curEntry->fDeltaTimeRemaining.tv, DELAY_ZERO, sizeof(struct timeval));// = (long)DELAY_ZERO;
         curEntry =curEntry->fNext;
     }
-    timeVal.sub(&curEntry->fDeltaTimeRemaining.fTv, &timeSinceLastSync.fTv);
+    timeVal.sub(&curEntry->fDeltaTimeRemaining.tv, &timeSinceLastSync.tv);
 }
 
 static void handleAlarm(DelayQueue *fDelayQueue) {
-  struct timeval fTv;
+  struct timeval tv;
 #if 0
       delaytask_msg("==>%s()head[0x%x]next[0x%x]pre[0x%x]\n", __func__, head(fDelayQueue), head(fDelayQueue)->fNext, head(fDelayQueue)->fPrev);
 //      delaytask_msg("==>%s()head[0x%x]\n", __func__, head(fDelayQueue));
 #endif
-  memset(&fTv, DELAY_ZERO, sizeof(struct timeval));
-  if (timeVal.ne(&fDelayQueue->head(fDelayQueue)->fDeltaTimeRemaining.fTv , &fTv)) fDelayQueue->synchronize(fDelayQueue);
+  memset(&tv, DELAY_ZERO, sizeof(struct timeval));
+  if (timeVal.ne(&fDelayQueue->head(fDelayQueue)->fDeltaTimeRemaining.tv , &tv)) fDelayQueue->synchronize(fDelayQueue);
 
   DelayQueueEntry *p = NULL;
   p = fDelayQueue->head(fDelayQueue);
@@ -285,15 +285,15 @@ static void handleAlarm(DelayQueue *fDelayQueue) {
   do
   {
       delaytask_msg("debug: tv_sec[%llu]usec[%llu]\n",
-              p->fDeltaTimeRemaining.fTv.tv_sec,
-              p->fDeltaTimeRemaining.fTv.tv_usec);
-      AlarmHandler *tmp = container_of(p, struct AlarmHandler, fDelayQueueEntry);
+              p->fDeltaTimeRemaining.tv.tv_sec,
+              p->fDeltaTimeRemaining.tv.tv_usec);
+      struct AlarmHandler *tmp = container_of(p, struct AlarmHandler, fDelayQueueEntry);
       delaytask_msg("fClientData [%d]\n", (unsigned int)(unsigned long)tmp->fClientData);
       p = p->fNext;
   }while(p != head(fDelayQueue));
   delaytask_msg("queue end\n\n");
   /* bug:fix only one/per */
-  while (timeVal.eq(&fDelayQueue->head(fDelayQueue)->fDeltaTimeRemaining.fTv, &fTv))
+  while (timeVal.eq(&fDelayQueue->head(fDelayQueue)->fDeltaTimeRemaining.tv, &tv))
   {
     // This event is due to be handled:
 
@@ -301,23 +301,23 @@ static void handleAlarm(DelayQueue *fDelayQueue) {
 #if 1
     delaytask_msg("head[0x%llx]next[0x%llx]pre[0x%llx]\n", head(fDelayQueue), head(fDelayQueue)->fNext, head(fDelayQueue)->fPrev);
     delaytask_msg("toRemove tv_sec[%llu]usec[%llu]\n",
-            toRemove->fDeltaTimeRemaining.fTv.tv_sec,
-            toRemove->fDeltaTimeRemaining.fTv.tv_usec);
+            toRemove->fDeltaTimeRemaining.tv.tv_sec,
+            toRemove->fDeltaTimeRemaining.tv.tv_usec);
 #endif
 
     fDelayQueue->removeEntry(toRemove); // do this first, in case handler accesses queue
     //获取派生类的alarm_handler 的指???stu.name, struct student, name
-    AlarmHandler *tmp = container_of(toRemove, struct AlarmHandler, fDelayQueueEntry);//)
-    tmp->handleTimeout(tmp);
-//    toRemove->handleTimeout(); //delete itself
+    struct AlarmHandler *tmp = container_of(toRemove, struct AlarmHandler, fDelayQueueEntry);//)
+    tmp->handle_timeout(tmp);
+//    toRemove->handle_timeout(); //delete itself
   }
 }
 
 void do_DelayQueue_init(DelayQueue *fDelayQueue)
 {
     //永远到不了的时间
-    fDelayQueue->fDelayQueueEntry.fDeltaTimeRemaining.fTv.tv_sec = INT_MAX; 
-    fDelayQueue->fDelayQueueEntry.fDeltaTimeRemaining.fTv.tv_usec = MILLION-1;
+    fDelayQueue->fDelayQueueEntry.fDeltaTimeRemaining.tv.tv_sec = INT_MAX; 
+    fDelayQueue->fDelayQueueEntry.fDeltaTimeRemaining.tv.tv_usec = MILLION-1;
     fDelayQueue->fDelayQueueEntry.flag = FIRST;
     fDelayQueue->fDelayQueueEntry.fNext = fDelayQueue->fDelayQueueEntry.fPrev = &fDelayQueue->fDelayQueueEntry;
 }
@@ -347,21 +347,21 @@ void doEventLoop(char* watchVariable) {
   }
 }
 
-void do_AlarmHandler_init(AlarmHandler* fAlarmHandler, TaskFunc* fProc, void * fClientData, DelayInterval *timeToDelay)
+void do_AlarmHandler_init(struct AlarmHandler* fAlarmHandler, TaskFunc* fProc, void * fClientData, DelayInterval *timeToDelay)
 {
     fAlarmHandler->fProc = fProc;
     fAlarmHandler->fClientData = fClientData;
-    fAlarmHandler->fDelayQueueEntry.fDeltaTimeRemaining.fTv = timeToDelay->fTv;
+    fAlarmHandler->fDelayQueueEntry.fDeltaTimeRemaining.tv = timeToDelay->tv;
     fAlarmHandler->fDelayQueueEntry.fNext = NULL;
     fAlarmHandler->fDelayQueueEntry.fPrev = NULL;
 }
-void AlarmHandler_init(AlarmHandler *fAlarmHandler)
+void AlarmHandler_init(struct AlarmHandler *fAlarmHandler)
 {
     fAlarmHandler->init = do_AlarmHandler_init;
-    fAlarmHandler->handleTimeout  = handleTimeout;
+    fAlarmHandler->handle_timeout  = handle_timeout;
 }
 
-int token(AlarmHandler * fAlarmHandler)
+int token(struct AlarmHandler * fAlarmHandler)
 {
     return fAlarmHandler->fToken;
 }
@@ -373,7 +373,7 @@ TaskToken scheduleDelayedTask(__int64 microseconds,
     if (microseconds < 0)microseconds = 0;
     DelayInterval timeToDelay;
     DelayInterval_init(&timeToDelay, (long)(microseconds/1000000), (long)(microseconds%1000000));
-    AlarmHandler *alarmHandler = (AlarmHandler *)malloc(sizeof(AlarmHandler));
+    struct  AlarmHandler *alarmHandler = (struct  AlarmHandler *)malloc(sizeof(struct  AlarmHandler));
     AlarmHandler_init(alarmHandler);
     alarmHandler->init(alarmHandler, proc, clientData, &timeToDelay);
     fDelayQueue.addEntry(&fDelayQueue, &alarmHandler->fDelayQueueEntry);
@@ -381,6 +381,16 @@ TaskToken scheduleDelayedTask(__int64 microseconds,
     return (TaskToken) (unsigned long)(alarmHandler->fToken);
 }
 volatile int total_timer_event = 0;
+/**
+ * @brief  非linux中:更新counter (32位counter 虚拟成64)
+ *
+ *         更新counter 时间点
+ *            * timer 中断
+ *            * 读取counter时更新
+ *            * 假设没定时任务时，如何获取counter -> 按照最大定时3s一直跑, 这样可以任意时刻获取时间
+ *
+ * @param sig
+ */
 void timer_event(int sig) 
 {
     int ret = 0;
@@ -395,9 +405,9 @@ void timer_event(int sig)
         if ( head->flag !=  FIRST){
             ts.it_interval.tv_sec = 0;//为0 表示不是间隔(周期)timer
             ts.it_interval.tv_nsec = 0; 
-            ts.it_value.tv_sec = head->fDeltaTimeRemaining.fTv.tv_sec; 
-            ts.it_value.tv_nsec = head->fDeltaTimeRemaining.fTv.tv_usec * 1000;
-            //alarm(head->fDeltaTimeRemaining.fTv.tv_sec);
+            ts.it_value.tv_sec = head->fDeltaTimeRemaining.tv.tv_sec; 
+            ts.it_value.tv_nsec = head->fDeltaTimeRemaining.tv.tv_usec * 1000;
+            //alarm(head->fDeltaTimeRemaining.tv.tv_sec);
             ret = timer_settime(timer, 0, &ts, NULL);
             if (ret)
             {
@@ -418,13 +428,13 @@ TaskToken scheduleTimerTask(__int64 microseconds,
     if (microseconds < 0)microseconds = 0;
     DelayInterval timeToDelay;
     DelayInterval_init(&timeToDelay, (long)(microseconds/1000000), (long)(microseconds%1000000));
-    AlarmHandler *alarmHandler = (AlarmHandler *)malloc(sizeof(AlarmHandler));
+    struct AlarmHandler *alarmHandler = (struct AlarmHandler *)malloc(sizeof(struct AlarmHandler));
     AlarmHandler_init(alarmHandler);
     alarmHandler->init(alarmHandler, proc, clientData, &timeToDelay);
 
     fDelayQueue.addEntry(&fDelayQueue, &alarmHandler->fDelayQueueEntry);
     DelayQueueEntry* head = fDelayQueue.head(&fDelayQueue);
-    if ( (head->fDeltaTimeRemaining.fTv.tv_sec != 0) || (head->fDeltaTimeRemaining.fTv.tv_usec != 0) )
+    if ( (head->fDeltaTimeRemaining.tv.tv_sec != 0) || (head->fDeltaTimeRemaining.tv.tv_usec != 0) )
     {
 #if 1    
         /* 取消之前挂上的定时器;根据head 新设定时器 */
@@ -439,12 +449,12 @@ TaskToken scheduleTimerTask(__int64 microseconds,
             perror("timer_settime");
         }  
 #endif        
-        //alarm(head->fDeltaTimeRemaining.fTv.tv_sec);
+        //alarm(head->fDeltaTimeRemaining.tv.tv_sec);
         ts.it_interval.tv_sec = 0;//为0 表示不是间隔(周期)timer
         ts.it_interval.tv_nsec = 0; 
-        ts.it_value.tv_sec = head->fDeltaTimeRemaining.fTv.tv_sec; 
-        ts.it_value.tv_nsec = head->fDeltaTimeRemaining.fTv.tv_usec * 1000;
-        //alarm(head->fDeltaTimeRemaining.fTv.tv_sec);
+        ts.it_value.tv_sec = head->fDeltaTimeRemaining.tv.tv_sec; 
+        ts.it_value.tv_nsec = head->fDeltaTimeRemaining.tv.tv_usec * 1000;
+        //alarm(head->fDeltaTimeRemaining.tv.tv_sec);
         ret = timer_settime(timer, 0, &ts, NULL);
         if (ret)
         {
