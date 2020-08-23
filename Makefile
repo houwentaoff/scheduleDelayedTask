@@ -3,10 +3,10 @@ default:all
 all:main
 
 main:main.o delaytask.o
-	gcc  $^ -o $@ -lpthread
+	gcc -DTIMER $^ -o $@ -lpthread
 
 %.o:%.c
-	gcc -c $^ -o $@ -g
+	gcc -DTIMER -c $^ -o $@ -g
 
 .PHONY:
 clean:

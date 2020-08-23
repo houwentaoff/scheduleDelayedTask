@@ -36,5 +36,10 @@ TaskToken scheduleDelayedTask(__int64 microseconds,
 		TaskFun* proc,
 		void* clientData);
 int schedule_task_is_empty();
+void * schedule_timer(void *data);
+TaskToken scheduleTimerTask(__int64 microseconds,
+        TaskFun* proc,
+        void* clientData);
+
 
 #endif

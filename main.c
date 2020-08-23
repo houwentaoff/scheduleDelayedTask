@@ -17,7 +17,7 @@
  *
  * =====================================================================================
  */
-
+#include <unistd.h>
 #include "delaytask.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,6 +25,8 @@
 #include <semaphore.h>
 #include <stdlib.h>
 #include <sys/resource.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #define  EnableCoreDumps()\
 {\
@@ -35,13 +37,14 @@
 }
 
 extern sem_t DelayedTask_sem;
+extern int total_timer_event;
 
 void task_test(void *clientData)
 {
 //	char *p=clientData;
 //	printf("[clientData]%s\n", p);
     int *tmp = clientData;
-    printf("tmp[%d]\n", (int)tmp);
+    printf("this is tmp[%llu]\n", (unsigned long)tmp);
 	return;
 }
 
@@ -76,10 +79,10 @@ int main(void) {
 	pthread_t delay_task_id;
     pthread_attr_t attr;
     int i =0;
-    
+
     EnableCoreDumps();
     mkdir("./cores",0775);//mkdir -p ../cores
-    system("sysctl -w kernel.core_pattern=./cores/core.%e-%p-%t");//在../cores目录中生成 core.test....
+    //system("sysctl -w kernel.core_pattern=./cores/core.%e-%p-%t");//在../cores目录中生成 core.test....
     
     if(0 != sem_init(&DelayedTask_sem, 0, 0))
     {
@@ -87,9 +90,14 @@ int main(void) {
     }
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-
+    
+#if defined(TIMER)
+    pthread_create(&delay_task_id, &attr, schedule_timer, NULL);
+#endif
+#if defined (SCHEDULE_DELAY)
     pthread_create(&delay_task_id, &attr, delay_task_func, NULL);
-
+#endif
+#if defined(LINUX)
     /*-----------------------------------------------------------------------------
      *  添加为RR调度后cpu从15%增加到80%,查看线程占用CPU,提高了延迟队列的调度频度
      *  root权限才有效
@@ -98,18 +106,33 @@ int main(void) {
     {
         perror("set rlt fail\n");
     }
+#endif    
     sem_wait(&DelayedTask_sem);
+#if defined(TIMER)    
+    for (i=0; i<3 ;i++)
+    {
+        scheduleTimerTask(500000*(i+1), task_test, (void *)(unsigned long)i);
+    }
+    usleep(500000);
+    scheduleTimerTask(500000, task_test, (void *)100);
+    scheduleTimerTask(500000, task_test, (void *)101);
+    scheduleTimerTask(600000, task_test, (void *)102);
+#endif
+
+#if defined(SCHEDULE_DELAY)
 //eg:
     for (i=0; i<100 ;i++)
     {
 	    scheduleDelayedTask(0, task_test, (void *)i);
     }
+#endif    
     while(!schedule_task_is_empty())
     {
         usleep(300*1000);
-        printf("is not null\n");
+        printf("task queue is not null\n");
     }
-    printf("task is null\n");
+    printf("task queue is empty\n");
+    printf("total_timer_event[%d]\n", total_timer_event);
 //	scheduleDelayedTask(2000000, task_test, str);
 //	scheduleDelayedTask(2000000, task_test, str);
     while (1)
